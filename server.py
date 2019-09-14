@@ -1,3 +1,4 @@
+# Importacoes
 import os
 import nltk
 import pandas as pd
@@ -12,13 +13,18 @@ from unicodedata import normalize
 from nltk import ngrams
 from flask import Flask
 from flask import request
-from flask import jsonify 
-portuguese_stops = set(stopwords.words('portuguese'))
-ignore = ['@', '.', '!','?',',','$','-','\'s','g','(',')','[',']','``',':','http','html','//members']
+from flask import jsonify
+from flask.ext.cors import CORS
 from nltk.stem import SnowballStemmer
 
-# Cria o Stemmer
+# Constantes
+portuguese_stops = set(stopwords.words('portuguese'))
+ignore = ['@', '.', '!','?',',','$','-','\'s','g','(',')','[',']','``',':','http','html','//members']
 stemmer = SnowballStemmer('english')
+# Regex para encontrar tokens
+REGEX_WORD = re.compile(r'\w+')
+# Numero de tokens em sequencia
+N_GRAM_TOKEN = 3
 
 # Funcao de pre-processamento do texto
 def preprocess_text(content):
@@ -34,12 +40,7 @@ def preprocess_text(content):
     #return word_tokens4
     return ' '.join(word_tokens4)
 
-#Regex para encontrar tokens
-REGEX_WORD = re.compile(r'\w+')
-#Numero de tokens em sequencia
-N_GRAM_TOKEN = 3
-
-#Faz a normalizacao do texto removendo espacos a mais e tirando acentos
+# Faz a normalizacao do texto removendo espacos a mais e tirando acentos
 def text_normalizer(src):
     return re.sub('\s+', ' ',
                 normalize('NFKD', src)
@@ -104,21 +105,39 @@ def most_similar(sentences,sentence):
     print ('Mais similar a ' + sentence + ' = ' + most_similar + ' with distance = ' + str(max_sim))
     return {'doc':most_similar}
 
+# Salva dados no banco
+def write_to_csv_file_by_pandas(csv_file_path, data_frame):
+    data_frame.to_csv(csv_file_path)
+    print(csv_file_path + ' has been created.')
+
 # Iniciando app Flask  
 app = Flask(__name__)
+cors = CORS(app, resources={r"/*": {"origins": "*"}})
 @app.route('/')
 def index():
   return 'Acesse o servico em /similaridade passando o JSON com POST'
-  
-@app.route('/similaridade', methods=['GET'])
+
+# Mensagem de erro caso seja acessado via GET
+@app.route('/api/v1/similaridade', methods=['GET'])
 def erro():
   return 'Este servico so pode ser acessado via POST'
 
-@app.route('/similaridade', methods=['POST'])
+# Calculo de similaridade de um texto apenas, para teste
+@app.route('/api/v1/similaridade', methods=['POST'])
 def similaridade():
   content = request.json
   print ("Request: "+str(content))
   print ("Nome: "+content['nome'])
   text = preprocess_text(content['nome'])
-  return jsonify(most_similar(texts,text))
+  response = jsonify(most_similar(texts,text))
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  return response
 
+# Chamada de 
+@app.route('/api/v1/processos/incluirProcesso', methods=['POST'])
+def incluirProcesso():
+  content = request.json
+  print ("Request: "+str(content))
+  response = jsonify({"_id":1})
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  return response
