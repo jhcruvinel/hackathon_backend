@@ -18,6 +18,8 @@ from flask_cors import CORS
 from nltk.stem import SnowballStemmer
 import json
 from pandas.io.json import json_normalize
+from datetime import datetime
+
 
 # Constantes
 portuguese_stops = set(stopwords.words('portuguese'))
@@ -113,6 +115,7 @@ def most_similar(sentences,sentence):
     print ('Mais similar a ' + sentence + ' = ' + most_similar + ' with distance = ' + str(max_sim))
     return {'doc':most_similar}
 
+
 #-----------------------------------------------------------------------------------
 # FUNÇOES PARA SIMULACAO DE BANCO DE DADOS COM PANDAS
 
@@ -161,16 +164,28 @@ def similaridade():
 def incluirProcesso():
   content = request.json
   print ("Request: "+str(content))
-  #content = json.dumps(content)
-  #df = json.loads(content)
-  df = pd.io.json.json_normalize(content)
   df_existente = read_csv_file_by_pandas('banco.csv')
+  content['id'] = 1
+  content['acordo'] = True
+  content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
   if df_existente is None:
+    df = pd.io.json.json_normalize(content)
     write_to_csv_file_by_pandas('banco.csv',df)
   else:
+    content['id'] = int(pd.read_csv('banco.csv')['id'].max())+1
+    df = pd.io.json.json_normalize(content)
     df_existente = df_existente.append(df)
     write_to_csv_file_by_pandas('banco.csv',df_existente)
   print('Processo salvo no banco local')
   response = jsonify(content)
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
+
+def calcula_similaridade_processos(processo1,processo2):
+    sim_nomeParteReclamante = get_sentence_similarity(processo1['nomeParteReclamante'],processo2['nomeParteReclamante'])
+    print("Similaridade Partes: "+sim_nomeParteReclamante)
+    date1 = datetime.strptime(processo1['dataAjuizamentoInicial'], '%T/%m/%d').date()
+    date2 = datetime.strptime(processo2['dataAjuizamentoInicial'], '%T/%m/%d').date()
+    dif_dataAjuizamentoInicial = abs((d2 - d1).days)
+    print("Diferença Datas: "+dif_dataAjuizamentoInicial)
+    
