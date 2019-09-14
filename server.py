@@ -128,7 +128,7 @@ def write_to_csv_file_by_pandas(csv_file_path, data_frame):
 def read_csv_file_by_pandas(csv_file):
     data_frame = None
     if(os.path.exists(csv_file)):
-        data_frame = pd.read_csv(csv_file, index_col=0)
+        data_frame = pd.read_csv(csv_file, index_col=False)
     else:
         print(csv_file + " do not exist.")    
     return data_frame
@@ -159,14 +159,14 @@ def similaridade():
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
 
-# Chamada de 
+# Chamada de inclusao de processo
 @app.route('/api/v1/processos/incluirProcesso', methods=['POST'])
 def incluirProcesso():
   content = request.json
   print ("Request: "+str(content))
   df_existente = read_csv_file_by_pandas('banco.csv')
   content['id'] = 1
-  content['acordo'] = True
+  content['acordo'] = 'S'
   content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
   if df_existente is None:
     df = pd.io.json.json_normalize(content)
@@ -180,6 +180,29 @@ def incluirProcesso():
   response = jsonify(content)
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
+
+# Chamada de insights de processo
+@app.route('/api/v1/processos/insightsProcesso', methods=['POST'])
+def insightsProcesso():
+  content = request.json
+  print ("Request: "+str(content))
+  df_existente = read_csv_file_by_pandas('banco.csv')
+  content['id'] = 1
+  content['acordo'] = 'N'
+  content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
+  if df_existente is None:
+    df = pd.io.json.json_normalize(content)
+    write_to_csv_file_by_pandas('banco.csv',df)
+  else:
+    content['id'] = int(pd.read_csv('banco.csv')['id'].max())+1
+    df = pd.io.json.json_normalize(content)
+    df_existente = df_existente.append(df)
+    write_to_csv_file_by_pandas('banco.csv',df_existente)
+  print('Processo salvo no banco local')
+  response = jsonify(content)
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  return response
+
 
 def calcula_similaridade_processos(processo1,processo2):
     sim_nomeParteReclamante = get_sentence_similarity(processo1['nomeParteReclamante'],processo2['nomeParteReclamante'])
