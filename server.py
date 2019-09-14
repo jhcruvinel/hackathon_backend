@@ -14,8 +14,10 @@ from nltk import ngrams
 from flask import Flask
 from flask import request
 from flask import jsonify
-from flask.ext.cors import CORS
+from flask_cors import CORS
 from nltk.stem import SnowballStemmer
+import json
+from pandas.io.json import json_normalize
 
 # Constantes
 portuguese_stops = set(stopwords.words('portuguese'))
@@ -25,6 +27,9 @@ stemmer = SnowballStemmer('english')
 REGEX_WORD = re.compile(r'\w+')
 # Numero de tokens em sequencia
 N_GRAM_TOKEN = 3
+
+#-----------------------------------------------------------------------------------
+# FUNÇOES DE PRE-PROCESSAMENTO DE TEXTO
 
 # Funcao de pre-processamento do texto
 def preprocess_text(content):
@@ -47,6 +52,9 @@ def text_normalizer(src):
                    .encode('ASCII','ignore')
                    .decode('ASCII')
            ).lower().strip()
+
+#-----------------------------------------------------------------------------------
+# FUNÇOES DE CALCULO DE SIMILARIDADE
 
 # Calculo de similaridade do coseno
 def cosine_similarity(vec1, vec2):
@@ -105,10 +113,25 @@ def most_similar(sentences,sentence):
     print ('Mais similar a ' + sentence + ' = ' + most_similar + ' with distance = ' + str(max_sim))
     return {'doc':most_similar}
 
+#-----------------------------------------------------------------------------------
+# FUNÇOES PARA SIMULACAO DE BANCO DE DADOS COM PANDAS
+
 # Salva dados no banco
 def write_to_csv_file_by_pandas(csv_file_path, data_frame):
-    data_frame.to_csv(csv_file_path)
+    data_frame.to_csv(csv_file_path, index=False)
     print(csv_file_path + ' has been created.')
+
+# Leitura 
+def read_csv_file_by_pandas(csv_file):
+    data_frame = None
+    if(os.path.exists(csv_file)):
+        data_frame = pd.read_csv(csv_file, index_col=0)
+    else:
+        print(csv_file + " do not exist.")    
+    return data_frame
+
+#-----------------------------------------------------------------------------------
+# DEFINICAO DOS SERVICOS REST DO FLASK 
 
 # Iniciando app Flask  
 app = Flask(__name__)
@@ -138,6 +161,16 @@ def similaridade():
 def incluirProcesso():
   content = request.json
   print ("Request: "+str(content))
-  response = jsonify({"_id":1})
+  #content = json.dumps(content)
+  #df = json.loads(content)
+  df = pd.io.json.json_normalize(content)
+  df_existente = read_csv_file_by_pandas('banco.csv')
+  if df_existente is None:
+    write_to_csv_file_by_pandas('banco.csv',df)
+  else:
+    df_existente = df_existente.append(df)
+    write_to_csv_file_by_pandas('banco.csv',df_existente)
+  print('Processo salvo no banco local')
+  response = jsonify(content)
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
