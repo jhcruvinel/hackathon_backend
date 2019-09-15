@@ -171,6 +171,13 @@ def incluirProcesso():
   df_existente = read_csv_file_by_pandas()
   content['id'] = 1
   content['carteiraDevidamenteAnotada'] = True
+  content['decimoTerceiroVencido'] = False
+  content['descricaoCadastroPartes'] = ''
+  content['existenciaVinculoEmpregaticio'] = True
+  content['feriasVencidas'] = True
+  content['justicaGratuita'] = False
+  content['mesesFgtsNaoDepositado'] = 0
+  content['motivoRescisao'] = ''
   content['acordo'] = 'S'
   content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
   if df_existente is None:
@@ -213,6 +220,13 @@ def recupera_processo(id):
     processo = df_processo.to_dict(orient='records')[0]
     processo['pedidos'] = ast.literal_eval(processo['pedidos'])
     processo['carteiraDevidamenteAnotada'] = True
+    processo['decimoTerceiroVencido'] = False
+    processo['descricaoCadastroPartes'] = ''
+    processo['existenciaVinculoEmpregaticio'] = True
+    processo['feriasVencidas'] = True
+    processo['justicaGratuita'] = False
+    processo['mesesFgtsNaoDepositado'] = 0
+    processo['motivoRescisao'] = ''
     return processo
 
 # Chamada pra consulta de processo
@@ -227,7 +241,6 @@ def insightsProcesso(id):
   print ("Buscando Insight para Processo ID: "+id)
   df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
-  print('recuperou')
   return calcula_insights(df_processo, df_existente)
   
 # Metodo para concatenar em uma string mais de um pedido para fins de comparacao
@@ -351,9 +364,18 @@ def calcula_insights(df_processo, df_existente):
 # Chamada de insights de processo
 @app.route('/api/v1/html/ata/<id>')
 def ata(id):
-    return render_template('ata_%s.html' % id, processo = recupera_processo(id))
+    df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
+    df_processo = df_existente.loc[df_existente['id'] == int(id)]
+    return calcula_insights(df_processo, df_existente)
+    if int(id) == 0:
+        return render_template('ata_0.html')
+    else:    
+        return render_template('ata.html', processo = recupera_processo(id))
 
 # Chamada de insights de processo
 @app.route('/api/v1/html/sentenca/<id>')
 def sentenca(id):
-    return render_template('sentenca_%s.html' % id, processo = recupera_processo(id))
+    if int(id) == 0:
+        return render_template('sentenca_0.html')
+    else: 
+        return render_template('sentenca.html', processo = recupera_processo(id))
