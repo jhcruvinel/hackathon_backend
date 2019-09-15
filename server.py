@@ -268,8 +268,12 @@ def calcula_diferenca_processos(p1, p2):
         dif['dif_dataAjuizamentoInicial'] = dif_dataAjuizamentoInicial
         # Comparacao dos meses de contratacao
         d1 = datetime.strptime(p1['dataInicioContrato'], '%Y-%m-%d').date()
+        d2 = datetime.strptime(p1['dataTerminoContrato'], '%Y-%m-%d').date()
+        dif_meses1 = abs((d2 - d1).days)
+        d1 = datetime.strptime(p2['dataInicioContrato'].iloc[0], '%Y-%m-%d').date()
         d2 = datetime.strptime(p2['dataTerminoContrato'].iloc[0], '%Y-%m-%d').date()
-        dif_meses = abs((d2 - d1).days)/30
+        dif_meses2 = abs((d2 - d1).days)
+        dif_meses = dif_meses1-dif_meses2
         dif['dif_meses'] = dif_meses
         # Comparacao dos meses de salario proporcional de 13
         propMeses13P1 = float(p1['meses13SalarioProporcional'])
@@ -292,8 +296,8 @@ def calcula_diferenca_processos(p1, p2):
         pedidos_iguais = pedido_concatenado1 == pedido_concatenado2
         dif['pedidos_iguais'] = pedidos_iguais
         # Calculo da distancia total entre pedidos com uso de pesos diferenciados
-        dif_total = nomes_reclamante_parecidos * 1.5
-        dif_total += nomes_reclamada_parecidos * 1.5
+        dif_total = (1 - nomes_reclamante_parecidos) * 1.5
+        dif_total += (1 - nomes_reclamada_parecidos) * 1.5
         dif_total += dif_dataAjuizamentoInicial / 10
         dif_total += dif_meses / 48
         dif_total += dif_propMeses13P / 6
@@ -337,12 +341,15 @@ def calcula_insights(df_processo, df_existente):
         if dif != {}:
             if dif['pedidos_iguais']:
                 print('iguais')
+                print(dif)
                 count += 1
                 if p['acordo'] == 'S':
                     den = maior_dif-menor_dif
                     fator = 1.0
                     if den > 0:
                         fator = (dif['dif_total']-menor_dif)/den
+                    else:
+                        fator = 0.0
                     if fator > 0.5:
                         fator = 0.5
                     print(fator)
