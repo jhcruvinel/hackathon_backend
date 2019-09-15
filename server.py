@@ -227,11 +227,27 @@ def recupera_processo(id):
     processo['motivoRescisao'] = ''
     return processo
 
+def recupera_contestacao(id_processo):
+    df_existentes = pd.read_csv(ARQUIVO_CONTESTACAO,header=0)
+    df_contestacao = df_existentes.loc[df_existentes['id_processo'] == int(id_processo)]
+    contestacao = df_contestacao.to_dict(orient='records')[0]   
+    contestacao['pedidos_impugnados'] = ast.literal_eval(contestacao['pedidos_impugnados'])
+    contestacao['processo.pedidos'] = ast.literal_eval(contestacao['processo.pedidos'])
+    return contestacao
+
+
 # Chamada pra consulta de processo
 @app.route('/api/v1/processos/processo/<id>', methods=['GET'])
 def buscaProcesso(id):
   print ("Buscando Processo ID: "+id)
   return jsonify(recupera_processo(id))
+
+# Chamada pra consulta de processo
+@app.route('/api/v1/processos/contestacao/<id_processo>', methods=['GET'])
+def buscaContestacao(id_processo):
+  print ("Buscando Contestacao do Processo ID: "+id_processo)
+  return jsonify(recupera_contestacao(id_processo   ))
+
 
 # Chamada de insights de processo
 @app.route('/api/v1/processos/insightsProcesso/<id>', methods=['GET'])
@@ -380,8 +396,8 @@ def calcula_insights(df_processo, df_existente):
 
 
 # Chamada de insights de processo
-@app.route('/api/v1/html/ata/<id>')
-def ata(id):
+@app.route('/api/v1/html/ata/<id>/<preliminares>/<prejudiciais>')
+def ata(id, preliminares, prejudiciais):
     df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(id)]
     insights = calcula_insights(df_processo, df_existente)
@@ -390,13 +406,17 @@ def ata(id):
     else:    
         return render_template('ata.html', 
         processo = recupera_processo(id),
+        contestacao = recupera_contestacao(id),
         percentual = insights['probabilidade_acordos']*100
         )
 
 # Chamada de insights de processo
-@app.route('/api/v1/html/sentenca/<id>')
-def sentenca(id):
+@app.route('/api/v1/html/sentenca/<id>/<preliminares>/<prejudiciais>')
+def sentenca(id, preliminares, prejudiciais):
     if int(id) == 0:
         return render_template('sentenca_0.html')
     else: 
-        return render_template('sentenca.html', processo = recupera_processo(id))
+        return render_template('sentenca.html', 
+        processo = recupera_processo(id),
+        contestacao = recupera_contestacao(id)
+        )
