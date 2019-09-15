@@ -396,8 +396,8 @@ def calcula_insights(df_processo, df_existente):
 
 
 # Chamada de insights de processo
-@app.route('/api/v1/html/ata/<id>/<preliminares>/<prejudiciais>')
-def ata(id, preliminares, prejudiciais):
+@app.route('/api/v1/html/ata/<id>')
+def ata(id):
     df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(id)]
     insights = calcula_insights(df_processo, df_existente)
@@ -418,5 +418,7 @@ def sentenca(id, preliminares, prejudiciais):
     else: 
         return render_template('sentenca.html', 
         processo = recupera_processo(id),
-        contestacao = recupera_contestacao(id)
+        contestacao = recupera_contestacao(id),
+        preliminares = preliminares,
+        prejudiciais = prejudiciais
         )
