@@ -16,6 +16,7 @@ from flask import Flask
 from flask import request
 from flask import jsonify
 from flask_cors import CORS
+from flask import render_template
 from nltk.stem import SnowballStemmer
 import json
 from pandas.io.json import json_normalize
@@ -169,6 +170,7 @@ def incluirProcesso():
   print ("Request: "+str(content))
   df_existente = read_csv_file_by_pandas()
   content['id'] = 1
+  content['carteiraDevidamenteAnotada'] = True
   content['acordo'] = 'S'
   content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
   if df_existente is None:
@@ -210,6 +212,7 @@ def recupera_processo(id):
     df_processo = df_existentes.loc[df_existentes['id'] == int(id)]
     processo = df_processo.to_dict(orient='records')[0]
     processo['pedidos'] = ast.literal_eval(processo['pedidos'])
+    processo['carteiraDevidamenteAnotada'] = True
     return processo
 
 # Chamada pra consulta de processo
@@ -344,12 +347,13 @@ def calcula_insights(df_processo, df_existente):
     print(insights)
     return jsonify(insights)
 
+
 # Chamada de insights de processo
-@app.route('/api/v1/processos/ata/<id>', methods=['GET'])
+@app.route('/api/v1/html/ata/<id>')
 def ata(id):
-  print ("Buscando Insight para Processo ID: "+id)
-  df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
-  df_processo = df_existente.loc[df_existente['id'] == int(id)]
-  print('recuperou')
-  return calcula_insights(df_processo, df_existente)
-  
+    return render_template('ata_%s.html' % id, processo = recupera_processo(id))
+
+# Chamada de insights de processo
+@app.route('/api/v1/html/sentenca/<id>')
+def sentenca(id):
+    return render_template('sentenca_%s.html' % id, processo = recupera_processo(id))
