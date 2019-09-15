@@ -1,5 +1,6 @@
 # Importacoes
 import os
+import ast
 import nltk
 import pandas as pd
 import pandas.io.sql as psql
@@ -29,6 +30,7 @@ stemmer = SnowballStemmer('english')
 REGEX_WORD = re.compile(r'\w+')
 # Numero de tokens em sequencia
 N_GRAM_TOKEN = 3
+DATABASE = 'banco.csv'
 
 #-----------------------------------------------------------------------------------
 # FUNÇOES DE PRE-PROCESSAMENTO DE TEXTO
@@ -120,17 +122,17 @@ def most_similar(sentences,sentence):
 # FUNÇOES PARA SIMULACAO DE BANCO DE DADOS COM PANDAS
 
 # Salva dados no banco
-def write_to_csv_file_by_pandas(csv_file_path, data_frame):
-    data_frame.to_csv(csv_file_path, index=False)
-    print(csv_file_path + ' has been created.')
+def write_to_csv_file_by_pandas(data_frame):
+    data_frame.to_csv(DATABASE, index=False)
+    print(DATABASE + ' has been created.')
 
 # Leitura 
-def read_csv_file_by_pandas(csv_file):
+def read_csv_file_by_pandas():
     data_frame = None
-    if(os.path.exists(csv_file)):
-        data_frame = pd.read_csv(csv_file, index_col=False)
+    if(os.path.exists(DATABASE)):
+        data_frame = pd.read_csv(DATABASE, index_col=False)
     else:
-        print(csv_file + " do not exist.")    
+        print(DATABASE + " do not exist.")    
     return data_frame
 
 #-----------------------------------------------------------------------------------
@@ -164,44 +166,49 @@ def similaridade():
 def incluirProcesso():
   content = request.json
   print ("Request: "+str(content))
-  df_existente = read_csv_file_by_pandas('banco.csv')
+  df_existente = read_csv_file_by_pandas()
   content['id'] = 1
   content['acordo'] = 'S'
   content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
   if df_existente is None:
     df = pd.io.json.json_normalize(content)
-    write_to_csv_file_by_pandas('banco.csv',df)
+    write_to_csv_file_by_pandas(df)
   else:
-    content['id'] = int(pd.read_csv('banco.csv')['id'].max())+1
+    content['id'] = int(pd.read_csv(DATABASE)['id'].max())+1
     df = pd.io.json.json_normalize(content)
     df_existente = df_existente.append(df)
-    write_to_csv_file_by_pandas('banco.csv',df_existente)
+    write_to_csv_file_by_pandas(df_existente)
   print('Processo salvo no banco local')
   response = jsonify(content)
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
 
+
+# Chamada pra consulta de processo
+@app.route('/api/v1/processos/processo/<id>', methods=['GET'])
+def buscaProcesso(id):
+  print ("Buscando Processo ID: "+id)
+  df_existente = pd.read_csv(DATABASE,header=0)
+  df_processo = df_existente.loc[df_existente['id'] == id]
+  json = df_processo.to_json()[1:-1].replace('},{', '} {')
+  print(json)
+  return json
+
+
 # Chamada de insights de processo
-@app.route('/api/v1/processos/insightsProcesso', methods=['POST'])
-def insightsProcesso():
-  content = request.json
-  print ("Request: "+str(content))
-  df_existente = read_csv_file_by_pandas('banco.csv')
-  content['id'] = 1
-  content['acordo'] = 'N'
-  content['link'] = 'http://www.trt12.jus.br/busca/sentencas/browse?q=aviso+pr%C3%A9vio&from=&to=&fq=&fq=ds_orgao_julgador%3A%221%C2%AA+VARA+DO+TRABALHO+DE+BLUMENAU%22'
-  if df_existente is None:
-    df = pd.io.json.json_normalize(content)
-    write_to_csv_file_by_pandas('banco.csv',df)
-  else:
-    content['id'] = int(pd.read_csv('banco.csv')['id'].max())+1
-    df = pd.io.json.json_normalize(content)
-    df_existente = df_existente.append(df)
-    write_to_csv_file_by_pandas('banco.csv',df_existente)
-  print('Processo salvo no banco local')
-  response = jsonify(content)
-  response.headers.add('Access-Control-Allow-Origin', '*')
-  return response
+@app.route('/api/v1/processos/insightsProcesso/<id>', methods=['GET'])
+def insightsProcesso(id):
+  print ("Buscando Insight para Processo ID: "+id)
+  df_existente = pd.read_csv(DATABASE,header=0)
+  print('recuperou')
+  df_processo = df_existente.loc[df_existente['id'] == id]
+  calcula_probabilidade_acordo(df_processo, df_existente)
+  return 'teste'
+
+def calcula_probabilidade_acordo(df_processo, df_existente):
+    for i, p in df_existente.iterrows():
+       print(p['acordo'])
+       print(df_processo.iloc[0]['acordo'])
 
 
 def calcula_similaridade_processos(processo1,processo2):
@@ -211,4 +218,4 @@ def calcula_similaridade_processos(processo1,processo2):
     date2 = datetime.strptime(processo2['dataAjuizamentoInicial'], '%T/%m/%d').date()
     dif_dataAjuizamentoInicial = abs((d2 - d1).days)
     print("Diferença Datas: "+dif_dataAjuizamentoInicial)
-    
+    return 
