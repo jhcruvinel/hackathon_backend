@@ -340,8 +340,7 @@ def calcula_insights(df_processo, df_existente):
         dif = calcula_diferenca_processos(p,df_processo)
         if dif != {}:
             if dif['pedidos_iguais']:
-                print('iguais')
-                print(dif)
+                #print(dif)
                 count += 1
                 if p['acordo'] == 'S':
                     den = maior_dif-menor_dif
