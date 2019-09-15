@@ -262,22 +262,22 @@ def calcula_diferenca_processos(p1, p2):
         dif_total += dif_salario / 2000
         dif_total += dif_jornadaSemanal / 44
         dif['dif_total'] = dif_total
-        print(dif)
     return dif
 
 def calcula_insights(df_processo, df_existente):
+    print('************** CALCULA INSIGHTS **************')
     insights = {}
     difs = []
     difs_totais = 0.0
     menor_dif = 100000.0
     maior_dif = 0.0
     processo_mais_semelhante = None
-    acordos = 0.0
     for i, p in df_existente.iterrows():
         dif = calcula_diferenca_processos(p,df_processo)
         if dif != {}:
             if dif['pedidos_iguais']:
                 dif = dif['dif_total']
+                print('Diferenca ponderada total com processo %s: %.2f' % (p['id'],dif))
                 difs.append(dif)
                 difs_totais += dif
                 if menor_dif > dif:
@@ -285,20 +285,27 @@ def calcula_insights(df_processo, df_existente):
                     processo_mais_semelhante = p['id']
                 if maior_dif < dif:
                     maior_dif = dif;
-    pontuacao_proximidade = ((difs_totais/len(difs))*menor_dif)
-    print('pontuacao_proximidade = %.2f' % pontuacao_proximidade)
+    print('Menor diferenca: %.2f' % menor_dif)
+    print('Maior diferenca: %.2f' % maior_dif)
+    print('Processo mais semelhante: ' + str(processo_mais_semelhante))
+    probabilidade_acordos = 0.0
+    count = 0
+    acordos = 0
     for i, p in df_existente.iterrows():
         dif = calcula_diferenca_processos(p,df_processo)
         if dif != {}:
-            print(dif)
             if dif['pedidos_iguais']:
+                count += 1
                 if p['acordo'] == 'S':
-                    acordos += (1 - dif['dif_total']/maior_dif)
-    print(menor_dif)
-    print(maior_dif)
-    print(processo_mais_semelhante)
-    probabilidade_acordos = acordos/len(dif)
-    insights['probabilidade_acordos'] = dif['nomes_reclamante_parecidos']
+                    fator = (dif['dif_total']-menor_dif)/(maior_dif-menor_dif)
+                    if fator > 0.5:
+                        fator = 0.5
+                    print(fator)
+                    acordos += (1 - fator)
+    print('Quantidade = '+str(count)+' , Acordos = '+str(acordos))
+    probabilidade_acordos = acordos/count
+    print('Probabilidade ponderada de acordo: %.2f' % processo_mais_semelhante)
+    insights['probabilidade_acordos'] = probabilidade_acordos
     insights['nomes_reclamante_parecidos'] = dif['nomes_reclamante_parecidos']
     insights['nomes_reclamada_parecidos'] = dif['nomes_reclamada_parecidos']
     insights['dif_dataAjuizamentoInicial'] = dif['dif_dataAjuizamentoInicial']
