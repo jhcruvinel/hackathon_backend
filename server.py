@@ -190,8 +190,9 @@ def buscaProcesso(id):
   print ("Buscando Processo ID: "+id)
   df_existente = pd.read_csv(DATABASE,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
-  json = df_processo.to_json(orient='records')
-  return json
+  processo = df_processo.to_dict(orient='records')
+  print(processo)
+  return jsonify(processo)
 
 
 # Chamada de insights de processo
@@ -201,9 +202,8 @@ def insightsProcesso(id):
   df_existente = pd.read_csv(DATABASE,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
   print('recuperou')
-  calcula_probabilidade_acordo(df_processo, df_existente)
-  return 'teste'
-
+  return calcula_insights(df_processo, df_existente)
+  
 # Metodo para concatenar em uma string mais de um pedido para fins de comparacao
 def concatenar_pedidos(pedidos):
     pedido_concatenado = ''
@@ -261,14 +261,16 @@ def calcula_diferenca_processos(p1, p2):
         dif_total += dif_salario / 2000
         dif_total += dif_jornadaSemanal / 44
         dif['dif_total'] = dif_total
+        print(dif)
     return dif
 
-def calcula_probabilidade_acordo(df_processo, df_existente):
+def calcula_insights(df_processo, df_existente):
+    insights = {}
     difs = []
     difs_totais = 0.0
     menor_dif = 100000.0
     maior_dif = 0.0
-    processo_mais_semelhante = 0
+    processo_mais_semelhante = None
     acordos = 0.0
     for i, p in df_existente.iterrows():
         dif = calcula_diferenca_processos(p,df_processo)
@@ -294,4 +296,17 @@ def calcula_probabilidade_acordo(df_processo, df_existente):
     print(menor_dif)
     print(maior_dif)
     print(processo_mais_semelhante)
-    print(acordos/len(dif))
+    probabilidade_acordos = acordos/len(dif)
+    insights['probabilidade_acordos'] = dif['nomes_reclamante_parecidos']
+    insights['nomes_reclamante_parecidos'] = dif['nomes_reclamante_parecidos']
+    insights['nomes_reclamada_parecidos'] = dif['nomes_reclamada_parecidos']
+    insights['dif_dataAjuizamentoInicial'] = dif['dif_dataAjuizamentoInicial']
+    insights['dif_meses'] = dif['dif_meses']
+    insights['dif_propMeses13P'] = dif['dif_propMeses13P']
+    insights['dif_jornadaSemanal'] = dif['dif_jornadaSemanal']
+    insights['dif_salario'] = dif['dif_salario']
+    df_existente = pd.read_csv(DATABASE,header=0)
+    df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
+    insights['processo_mais_semelhante'] = df_processo.to_dict(orient='records')
+    print(insights)
+    return jsonify(insights)
