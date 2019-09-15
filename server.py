@@ -336,6 +336,7 @@ def calcula_insights(df_processo, df_existente):
         dif = calcula_diferenca_processos(p,df_processo)
         if dif != {}:
             if dif['pedidos_iguais']:
+                print('iguais')
                 count += 1
                 if p['acordo'] == 'S':
                     fator = (dif['dif_total']-menor_dif)/(maior_dif-menor_dif)
@@ -344,19 +345,30 @@ def calcula_insights(df_processo, df_existente):
                     print(fator)
                     acordos += (1 - fator)
     print('Quantidade = '+str(count)+' , Acordos = '+str(acordos))
-    probabilidade_acordos = acordos/count
+    if count > 0:
+        probabilidade_acordos = acordos/count
     print('Probabilidade ponderada de acordo: %.2f' % probabilidade_acordos)
     insights['probabilidade_acordos'] = probabilidade_acordos
-    insights['nomes_reclamante_parecidos'] = diff_semelhante['nomes_reclamante_parecidos']
-    insights['nomes_reclamada_parecidos'] = diff_semelhante['nomes_reclamada_parecidos']
-    insights['dif_dataAjuizamentoInicial'] = diff_semelhante['dif_dataAjuizamentoInicial']
-    insights['dif_meses'] = diff_semelhante['dif_meses']
-    insights['dif_propMeses13P'] = diff_semelhante['dif_propMeses13P']
-    insights['dif_jornadaSemanal'] = diff_semelhante['dif_jornadaSemanal']
-    insights['dif_salario'] = diff_semelhante['dif_salario']
-    df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
-    df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
-    insights['processo_mais_semelhante'] = recupera_processo(processo_mais_semelhante)
+    if count > 0: 
+        insights['nomes_reclamante_parecidos'] = diff_semelhante['nomes_reclamante_parecidos']
+        insights['nomes_reclamada_parecidos'] = diff_semelhante['nomes_reclamada_parecidos']
+        insights['dif_dataAjuizamentoInicial'] = diff_semelhante['dif_dataAjuizamentoInicial']
+        insights['dif_meses'] = diff_semelhante['dif_meses']
+        insights['dif_propMeses13P'] = diff_semelhante['dif_propMeses13P']
+        insights['dif_jornadaSemanal'] = diff_semelhante['dif_jornadaSemanal']
+        insights['dif_salario'] = diff_semelhante['dif_salario']
+        df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
+        df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
+        insights['processo_mais_semelhante'] = recupera_processo(processo_mais_semelhante)
+    else:
+        insights['nomes_reclamante_parecidos'] = -1
+        insights['nomes_reclamada_parecidos'] = -1
+        insights['dif_dataAjuizamentoInicial'] = -1
+        insights['dif_meses'] = -1
+        insights['dif_propMeses13P'] = -1
+        insights['dif_jornadaSemanal'] = -1
+        insights['dif_salario'] = -1
+        insights['processo_mais_semelhante'] = {}
     print(insights)
     return jsonify(insights)
 
@@ -366,11 +378,13 @@ def calcula_insights(df_processo, df_existente):
 def ata(id):
     df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(id)]
-    return calcula_insights(df_processo, df_existente)
     if int(id) == 0:
         return render_template('ata_0.html')
     else:    
-        return render_template('ata.html', processo = recupera_processo(id))
+        return render_template('ata.html', 
+        processo = recupera_processo(id),
+        insights = calcula_insights(df_processo, df_existente)
+        )
 
 # Chamada de insights de processo
 @app.route('/api/v1/html/sentenca/<id>')
