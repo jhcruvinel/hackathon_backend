@@ -339,7 +339,10 @@ def calcula_insights(df_processo, df_existente):
                 print('iguais')
                 count += 1
                 if p['acordo'] == 'S':
-                    fator = (dif['dif_total']-menor_dif)/(maior_dif-menor_dif)
+                    den = maior_dif-menor_dif
+                    fator = 1.0
+                    if den > 0:
+                        fator = (dif['dif_total']-menor_dif)/den
                     if fator > 0.5:
                         fator = 0.5
                     print(fator)
@@ -378,12 +381,14 @@ def calcula_insights(df_processo, df_existente):
 def ata(id):
     df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(id)]
+    insights = calcula_insights(df_processo, df_existente)
+    print(insights)
     if int(id) == 0:
         return render_template('ata_0.html')
     else:    
         return render_template('ata.html', 
         processo = recupera_processo(id),
-        insights = calcula_insights(df_processo, df_existente)
+        insights = insights
         )
 
 # Chamada de insights de processo
