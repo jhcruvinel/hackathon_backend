@@ -183,17 +183,18 @@ def incluirProcesso():
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
 
+def recupera_processo(id):
+    df_existentes = pd.read_csv(DATABASE,header=0)
+    df_processo = df_existentes.loc[df_existentes['id'] == int(id)]
+    processo = df_processo.to_dict(orient='records')[0]
+    processo['pedidos'] = ast.literal_eval(processo['pedidos'])
+    return processo
 
 # Chamada pra consulta de processo
 @app.route('/api/v1/processos/processo/<id>', methods=['GET'])
 def buscaProcesso(id):
   print ("Buscando Processo ID: "+id)
-  df_existente = pd.read_csv(DATABASE,header=0)
-  df_processo = df_existente.loc[df_existente['id'] == int(id)]
-  processo = df_processo.to_dict(orient='records')
-  print(processo)
-  return jsonify(processo)
-
+  return jsonify(recupera_processo(id))
 
 # Chamada de insights de processo
 @app.route('/api/v1/processos/insightsProcesso/<id>', methods=['GET'])
@@ -307,6 +308,6 @@ def calcula_insights(df_processo, df_existente):
     insights['dif_salario'] = dif['dif_salario']
     df_existente = pd.read_csv(DATABASE,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
-    insights['processo_mais_semelhante'] = df_processo.to_dict(orient='records')
+    insights['processo_mais_semelhante'] = recupera_processo(processo_mais_semelhante)
     print(insights)
     return jsonify(insights)
