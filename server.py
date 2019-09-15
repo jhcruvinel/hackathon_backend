@@ -189,9 +189,8 @@ def incluirProcesso():
 def buscaProcesso(id):
   print ("Buscando Processo ID: "+id)
   df_existente = pd.read_csv(DATABASE,header=0)
-  df_processo = df_existente.loc[df_existente['id'] == id]
-  json = df_processo.to_json()[1:-1].replace('},{', '} {')
-  print(json)
+  df_processo = df_existente.loc[df_existente['id'] == int(id)]
+  json = df_processo.to_json(orient='records')
   return json
 
 
@@ -200,22 +199,71 @@ def buscaProcesso(id):
 def insightsProcesso(id):
   print ("Buscando Insight para Processo ID: "+id)
   df_existente = pd.read_csv(DATABASE,header=0)
+  df_processo = df_existente.loc[df_existente['id'] == int(id)]
   print('recuperou')
-  df_processo = df_existente.loc[df_existente['id'] == id]
   calcula_probabilidade_acordo(df_processo, df_existente)
   return 'teste'
 
+# Metodo para concatenar em uma string mais de um pedido para fins de comparacao
+def concatenar_pedidos(pedidos):
+    pedido_concatenado = ''
+    for pedido in pedidos:
+        pedido_concatenado += pedido['tipo']+"_"
+    return pedido_concatenado
+
+# Metodo para o calculo ponderado da diferenca entre processos
+def calcula_diferenca_processos(p1, p2):
+    dif = {}
+    # So compara se nao for com si mesmo
+    if (p1['id'] != p2['id'].iloc[0]):
+        # Comparacao dos Nomes das Partes Reclamadas
+        nomes_reclamante_parecidos = get_sentence_similarity(p1['nomeParteReclamante'] , p2['nomeParteReclamante'].iloc[0], use_text_bigram=True)
+        dif['nomes_reclamante_parecidos'] = nomes_reclamante_parecidos
+        # Comparacao dos Nomes das Partes Reclamantes
+        nomes_reclamada_parecidos = get_sentence_similarity(p1['nomeParteReclamada'] , p2['nomeParteReclamada'].iloc[0], use_text_bigram=True)
+        dif['nomes_reclamada_parecidos'] = nomes_reclamada_parecidos
+        # Compracao do prazo de Ajuizamento
+        d1 = datetime.strptime(p1['dataAjuizamentoInicial'], '%Y-%m-%d').date()
+        d2 = datetime.strptime(p2['dataAjuizamentoInicial'].iloc[0], '%Y-%m-%d').date()
+        dif_dataAjuizamentoInicial = abs((d2 - d1).days)
+        dif['dif_dataAjuizamentoInicial'] = dif_dataAjuizamentoInicial
+        # Comparacao dos meses de contratacao
+        d1 = datetime.strptime(p1['dataInicioContrato'], '%Y-%m-%d').date()
+        d2 = datetime.strptime(p2['dataTerminoContrato'].iloc[0], '%Y-%m-%d').date()
+        dif_meses = abs((d2 - d1).days)/30
+        dif['dif_meses'] = dif_meses
+        # Comparacao dos meses de salario proporcional de 13
+        propMeses13P1 = float(p1['meses13SalarioProporcional'])
+        propMeses13P2 = float(p2['meses13SalarioProporcional'].iloc[0])
+        dif_propMeses13P = propMeses13P1-propMeses13P2
+        dif['dif_propMeses13P'] = dif_propMeses13P
+        # Comparacao dos salarios
+        salario1 = float(p1['salario'])
+        salario2 = float(p2['salario'].iloc[0])
+        dif_salario = salario1-salario2
+        dif['dif_salario'] = dif_salario
+        # Comparacao das jornadas
+        jornadaSemanal1 = int(p1['jornadaSemanal'])
+        jornadaSemanal2 = int(p2['jornadaSemanal'].iloc[0])
+        dif_jornadaSemanal = jornadaSemanal1-jornadaSemanal2
+        dif['dif_jornadaSemanal'] = dif_jornadaSemanal
+        # Comparacao dos pedidos
+        pedido_concatenado1 = concatenar_pedidos(ast.literal_eval(p1['pedidos']))
+        pedido_concatenado2 = concatenar_pedidos(ast.literal_eval(p2['pedidos'].iloc[0]))
+        pedidos_iguais = pedido_concatenado1 == pedido_concatenado2
+        dif['pedidos_iguais'] = pedidos_iguais
+        # Calculo da distancia total entre pedidos com uso de pesos diferenciados
+        dif_total = nomes_reclamante_parecidos * 1.5
+        dif_total += nomes_reclamada_parecidos * 1.5
+        dif_total += dif_dataAjuizamentoInicial / 10
+        dif_total += dif_meses / 48
+        dif_total += dif_propMeses13P / 6
+        dif_total += dif_salario / 2000
+        dif_total += dif_jornadaSemanal / 44
+        dif['dif_total'] = dif_total
+    return dif
+
 def calcula_probabilidade_acordo(df_processo, df_existente):
     for i, p in df_existente.iterrows():
-       print(p['acordo'])
-       print(df_processo.iloc[0]['acordo'])
-
-
-def calcula_similaridade_processos(processo1,processo2):
-    sim_nomeParteReclamante = get_sentence_similarity(processo1['nomeParteReclamante'],processo2['nomeParteReclamante'])
-    print("Similaridade Partes: "+sim_nomeParteReclamante)
-    date1 = datetime.strptime(processo1['dataAjuizamentoInicial'], '%T/%m/%d').date()
-    date2 = datetime.strptime(processo2['dataAjuizamentoInicial'], '%T/%m/%d').date()
-    dif_dataAjuizamentoInicial = abs((d2 - d1).days)
-    print("Diferença Datas: "+dif_dataAjuizamentoInicial)
-    return 
+       dif = calcula_diferenca_processos(p,df_processo)
+       print(dif)
