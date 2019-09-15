@@ -241,7 +241,7 @@ def insightsProcesso(id):
   print ("Buscando Insight para Processo ID: "+id)
   df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
-  return calcula_insights(df_processo, df_existente)
+  return jsonify(calcula_insights(df_processo, df_existente))
   
 # Metodo para concatenar em uma string mais de um pedido para fins de comparacao
 def concatenar_pedidos(pedidos):
@@ -380,7 +380,7 @@ def calcula_insights(df_processo, df_existente):
         insights['dif_salario'] = -1
         insights['processo_mais_semelhante'] = {}
     print(insights)
-    return jsonify(insights)
+    return insights
 
 
 # Chamada de insights de processo
@@ -389,13 +389,12 @@ def ata(id):
     df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(id)]
     insights = calcula_insights(df_processo, df_existente)
-    print(insights)
     if int(id) == 0:
         return render_template('ata_0.html')
     else:    
         return render_template('ata.html', 
         processo = recupera_processo(id),
-        insights = insights
+        percentual = insights['probabilidade_acordos']*100
         )
 
 # Chamada de insights de processo
