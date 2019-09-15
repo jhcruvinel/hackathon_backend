@@ -30,7 +30,8 @@ stemmer = SnowballStemmer('english')
 REGEX_WORD = re.compile(r'\w+')
 # Numero de tokens em sequencia
 N_GRAM_TOKEN = 3
-DATABASE = 'banco.csv'
+ARQUIVO_PROCESSO = 'banco.csv'
+ARQUIVO_CONTESTACAO = 'contestacao.csv'
 
 #-----------------------------------------------------------------------------------
 # FUNÇOES DE PRE-PROCESSAMENTO DE TEXTO
@@ -122,17 +123,17 @@ def most_similar(sentences,sentence):
 # FUNÇOES PARA SIMULACAO DE BANCO DE DADOS COM PANDAS
 
 # Salva dados no banco
-def write_to_csv_file_by_pandas(data_frame):
-    data_frame.to_csv(DATABASE, index=False)
-    print(DATABASE + ' has been created.')
+def write_to_csv_file_by_pandas(data_frame,file_name=ARQUIVO_PROCESSO):
+    data_frame.to_csv(file_name, index=False)
+    print(file_name + ' has been created.')
 
 # Leitura 
-def read_csv_file_by_pandas():
+def read_csv_file_by_pandas(file_name=ARQUIVO_PROCESSO):
     data_frame = None
-    if(os.path.exists(DATABASE)):
-        data_frame = pd.read_csv(DATABASE, index_col=False)
+    if(os.path.exists(file_name)):
+        data_frame = pd.read_csv(file_name, index_col=False)
     else:
-        print(DATABASE + " do not exist.")    
+        print(file_name + " do not exist.")    
     return data_frame
 
 #-----------------------------------------------------------------------------------
@@ -174,7 +175,7 @@ def incluirProcesso():
     df = pd.io.json.json_normalize(content)
     write_to_csv_file_by_pandas(df)
   else:
-    content['id'] = int(pd.read_csv(DATABASE)['id'].max())+1
+    content['id'] = int(pd.read_csv(ARQUIVO_PROCESSO)['id'].max())+1
     df = pd.io.json.json_normalize(content)
     df_existente = df_existente.append(df)
     write_to_csv_file_by_pandas(df_existente)
@@ -183,8 +184,29 @@ def incluirProcesso():
   response.headers.add('Access-Control-Allow-Origin', '*')
   return response
 
+# Chamada de inclusao de processo
+@app.route('/api/v1/processos/incluirContestacao', methods=['POST'])
+def incluirContestacao():
+  content = request.json
+  print ("Request: "+str(content))
+  content['id'] = 1
+  content['processo'] = recupera_processo(content['id_processo'])
+  df_existente = read_csv_file_by_pandas(file_name=ARQUIVO_CONTESTACAO)
+  if df_existente is None:
+    df = pd.io.json.json_normalize(content)
+    write_to_csv_file_by_pandas(df,file_name=ARQUIVO_CONTESTACAO)
+  else:
+    content['id'] = int(pd.read_csv(ARQUIVO_CONTESTACAO)['id'].max())+1
+    df = pd.io.json.json_normalize(content)
+    df_existente = df_existente.append(df)
+    write_to_csv_file_by_pandas(df_existente,file_name=ARQUIVO_CONTESTACAO)
+  print('Contestacao salva no banco local')
+  response = jsonify(content)
+  response.headers.add('Access-Control-Allow-Origin', '*')
+  return response
+
 def recupera_processo(id):
-    df_existentes = pd.read_csv(DATABASE,header=0)
+    df_existentes = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existentes.loc[df_existentes['id'] == int(id)]
     processo = df_processo.to_dict(orient='records')[0]
     processo['pedidos'] = ast.literal_eval(processo['pedidos'])
@@ -200,7 +222,7 @@ def buscaProcesso(id):
 @app.route('/api/v1/processos/insightsProcesso/<id>', methods=['GET'])
 def insightsProcesso(id):
   print ("Buscando Insight para Processo ID: "+id)
-  df_existente = pd.read_csv(DATABASE,header=0)
+  df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
   print('recuperou')
   return calcula_insights(df_processo, df_existente)
@@ -316,7 +338,7 @@ def calcula_insights(df_processo, df_existente):
     insights['dif_propMeses13P'] = diff_semelhante['dif_propMeses13P']
     insights['dif_jornadaSemanal'] = diff_semelhante['dif_jornadaSemanal']
     insights['dif_salario'] = diff_semelhante['dif_salario']
-    df_existente = pd.read_csv(DATABASE,header=0)
+    df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
     insights['processo_mais_semelhante'] = recupera_processo(processo_mais_semelhante)
     print(insights)
@@ -326,7 +348,7 @@ def calcula_insights(df_processo, df_existente):
 @app.route('/api/v1/processos/ata/<id>', methods=['GET'])
 def ata(id):
   print ("Buscando Insight para Processo ID: "+id)
-  df_existente = pd.read_csv(DATABASE,header=0)
+  df_existente = pd.read_csv(ARQUIVO_PROCESSO,header=0)
   df_processo = df_existente.loc[df_existente['id'] == int(id)]
   print('recuperou')
   return calcula_insights(df_processo, df_existente)
