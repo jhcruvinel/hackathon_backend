@@ -264,6 +264,34 @@ def calcula_diferenca_processos(p1, p2):
     return dif
 
 def calcula_probabilidade_acordo(df_processo, df_existente):
+    difs = []
+    difs_totais = 0.0
+    menor_dif = 100000.0
+    maior_dif = 0.0
+    processo_mais_semelhante = 0
+    acordos = 0.0
     for i, p in df_existente.iterrows():
-       dif = calcula_diferenca_processos(p,df_processo)
-       print(dif)
+        dif = calcula_diferenca_processos(p,df_processo)
+        if dif != {}:
+            if dif['pedidos_iguais']:
+                dif = dif['dif_total']
+                difs.append(dif)
+                difs_totais += dif
+                if menor_dif > dif:
+                    menor_dif = dif;
+                    processo_mais_semelhante = p['id']
+                if maior_dif < dif:
+                    maior_dif = dif;
+    pontuacao_proximidade = ((difs_totais/len(difs))*menor_dif)
+    print('pontuacao_proximidade = %.2f' % pontuacao_proximidade)
+    for i, p in df_existente.iterrows():
+        dif = calcula_diferenca_processos(p,df_processo)
+        if dif != {}:
+            print(dif)
+            if dif['pedidos_iguais']:
+                if p['acordo'] == 'S':
+                    acordos += (1 - dif['dif_total']/maior_dif)
+    print(menor_dif)
+    print(maior_dif)
+    print(processo_mais_semelhante)
+    print(acordos/len(dif))
