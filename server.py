@@ -167,7 +167,6 @@ def similaridade():
 @app.route('/api/v1/processos/incluirProcesso', methods=['POST'])
 def incluirProcesso():
   content = request.json
-  print ("Request: "+str(content))
   df_existente = read_csv_file_by_pandas()
   content['id'] = 1
   content['carteiraDevidamenteAnotada'] = True
@@ -197,7 +196,6 @@ def incluirProcesso():
 @app.route('/api/v1/processos/incluirContestacao', methods=['POST'])
 def incluirContestacao():
   content = request.json
-  print ("Request: "+str(content))
   content['id'] = 1
   content['processo'] = recupera_processo(content['id_processo'])
   df_existente = read_csv_file_by_pandas(file_name=ARQUIVO_CONTESTACAO)
@@ -351,7 +349,6 @@ def calcula_insights(df_processo, df_existente):
                         fator = 0.0
                     if fator > 0.5:
                         fator = 0.5
-                    print(fator)
                     acordos += (1 - fator)
     print('Quantidade = '+str(count)+' , Acordos = '+str(acordos))
     if count > 0:
