@@ -264,6 +264,7 @@ def calcula_diferenca_processos(p1, p2):
         dif['dif_total'] = dif_total
     return dif
 
+# Metodos para calculo de Insights
 def calcula_insights(df_processo, df_existente):
     print('************** CALCULA INSIGHTS **************')
     insights = {}
@@ -272,19 +273,21 @@ def calcula_insights(df_processo, df_existente):
     menor_dif = 100000.0
     maior_dif = 0.0
     processo_mais_semelhante = None
+    diff_semelhante = {}
     for i, p in df_existente.iterrows():
         dif = calcula_diferenca_processos(p,df_processo)
         if dif != {}:
             if dif['pedidos_iguais']:
-                dif = dif['dif_total']
-                print('Diferenca ponderada total com processo %s: %.2f' % (p['id'],dif))
-                difs.append(dif)
-                difs_totais += dif
-                if menor_dif > dif:
-                    menor_dif = dif;
+                dif_total = dif['dif_total']
+                print('Diferenca ponderada total com processo %s: %.2f' % (p['id'],dif_total))
+                difs.append(dif_total)
+                difs_totais += dif_total
+                if menor_dif > dif_total:
+                    menor_dif = dif_total;
                     processo_mais_semelhante = p['id']
-                if maior_dif < dif:
-                    maior_dif = dif;
+                    diff_semelhante = dif
+                if maior_dif < dif_total:
+                    maior_dif = dif_total;
     print('Menor diferenca: %.2f' % menor_dif)
     print('Maior diferenca: %.2f' % maior_dif)
     print('Processo mais semelhante: ' + str(processo_mais_semelhante))
@@ -304,17 +307,27 @@ def calcula_insights(df_processo, df_existente):
                     acordos += (1 - fator)
     print('Quantidade = '+str(count)+' , Acordos = '+str(acordos))
     probabilidade_acordos = acordos/count
-    print('Probabilidade ponderada de acordo: %.2f' % processo_mais_semelhante)
+    print('Probabilidade ponderada de acordo: %.2f' % probabilidade_acordos)
     insights['probabilidade_acordos'] = probabilidade_acordos
-    insights['nomes_reclamante_parecidos'] = dif['nomes_reclamante_parecidos']
-    insights['nomes_reclamada_parecidos'] = dif['nomes_reclamada_parecidos']
-    insights['dif_dataAjuizamentoInicial'] = dif['dif_dataAjuizamentoInicial']
-    insights['dif_meses'] = dif['dif_meses']
-    insights['dif_propMeses13P'] = dif['dif_propMeses13P']
-    insights['dif_jornadaSemanal'] = dif['dif_jornadaSemanal']
-    insights['dif_salario'] = dif['dif_salario']
+    insights['nomes_reclamante_parecidos'] = diff_semelhante['nomes_reclamante_parecidos']
+    insights['nomes_reclamada_parecidos'] = diff_semelhante['nomes_reclamada_parecidos']
+    insights['dif_dataAjuizamentoInicial'] = diff_semelhante['dif_dataAjuizamentoInicial']
+    insights['dif_meses'] = diff_semelhante['dif_meses']
+    insights['dif_propMeses13P'] = diff_semelhante['dif_propMeses13P']
+    insights['dif_jornadaSemanal'] = diff_semelhante['dif_jornadaSemanal']
+    insights['dif_salario'] = diff_semelhante['dif_salario']
     df_existente = pd.read_csv(DATABASE,header=0)
     df_processo = df_existente.loc[df_existente['id'] == int(processo_mais_semelhante)]
     insights['processo_mais_semelhante'] = recupera_processo(processo_mais_semelhante)
     print(insights)
     return jsonify(insights)
+
+# Chamada de insights de processo
+@app.route('/api/v1/processos/ata/<id>', methods=['GET'])
+def ata(id):
+  print ("Buscando Insight para Processo ID: "+id)
+  df_existente = pd.read_csv(DATABASE,header=0)
+  df_processo = df_existente.loc[df_existente['id'] == int(id)]
+  print('recuperou')
+  return calcula_insights(df_processo, df_existente)
+  
